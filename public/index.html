@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Shop</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="mx-auto bg-secondary p-3">
+  <h1 class="text-center text-light">Shop</h1>
+
+  <form id="auth" class="container p-3 w-40% bg-white mx-auto ml-4 mr-4">
+    <h2 class="text-light">Register</h2>
+    <div class="d-flex flex-column p-3">
+        <input id="reg-username" class="m-1" placeholder="Username" />
+        <input id="reg-password" class="m-1" placeholder="Password" type="password" />
+        <button onclick="register()" type="button" class="btn btn-outline-dark">Register</button>
+    </div>
+    <h2 class="text-light">Login</h2>
+    <div class="d-flex flex-column p-3">
+        <input id="login-username" class="m-1" placeholder="Username" />
+        <input id="login-password" class="m-1" placeholder="Password" type="password" />
+        <button onclick="login()" type="button" class="btn btn-outline-dark">Login</button>
+    </div>
+  </form>
+
+  <div id="shop" style="display:none;" class="bg-dark-subtle p-4">
+    <h2>Products</h2>
+    <div>
+    <ul id="product-list" class="text-dark"></ul>
+      </div>
+    <h2>Cart</h2>
+    <div>
+    <ul id="cart-list" class="text-dark"></ul>
+    </div>
+    <button onclick="placeOrder()" type="button" class="btn btn-outline-dark">Place Order</button>
+  </div>
+</div>
+
+
+  <script>
+    let token = '';
+
+    async function register() {
+      const username = document.getElementById('reg-username').value;
+      const password = document.getElementById('reg-password').value;
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      alert(await res.text());
+    }
+
+    async function login() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (data.token) {
+        token = data.token;
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('shop').style.display = 'block';
+        loadProducts();
+        loadCart();
+      } else {
+        alert('Login failed');
+      }
+    }
+
+    async function loadProducts() {
+      const res = await fetch('/products');
+      const products = await res.json();
+      const list = document.getElementById('product-list');
+      list.innerHTML = '';
+      products.forEach(p => {
+        const li = document.createElement('li');
+        li.innerHTML = `${p.name} - $${p.price} 
+          <button onclick="addToCart(${p.id})">Add to cart</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    async function addToCart(productId) {
+      const qty = prompt("Enter quantity:");
+      await fetch('/cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ productId, qty: Number(qty) })
+      });
+      alert('Added to cart');
+      loadCart();
+    }
+
+    async function loadCart() {
+      const res = await fetch('/cart', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const cart = await res.json();
+      const list = document.getElementById('cart-list');
+      list.innerHTML = '';
+      cart.forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = `Product ID: ${item.productId}, Qty: ${item.qty}`;
+        list.appendChild(li);
+      });
+    }
+
+    async function placeOrder() {
+      const res = await fetch('/order', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      alert(await res.text());
+      loadCart();
+    }
+  </script>
+</body>
+</html>
